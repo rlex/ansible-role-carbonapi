@@ -1,0 +1,26 @@
+- name: Download carbonapi apt key
+  apt_key:
+    url: "https://packagecloud.io/go-graphite/autobuilds/gpgkey"
+    state: present
+
+- name: Add carbonapi repository
+  apt_repository:
+    repo: "deb https://packagecloud.io/go-graphite/autobuilds/{{ ansible_distribution|lower }}/ {{ ansible_lsb.codename }} main"
+    filename: "carbonapi"
+    state: present
+  when: ansible_lsb is defined
+
+- name: "Install carbonapi package"
+  apt:
+    name: carbonapi
+    state: present
+  notify: restart carbonapi
+
+- name: "Install carbonapi config file"
+  template:
+    src: etc/carbonapi/carbonapi.yaml.j2
+    dest: /etc/carbonapi/carbonapi.yaml
+    owner: root
+    group: root
+    mode: 0640
+  notify: restart carbonapi

@@ -1,0 +1,15 @@
+carbonapi_upsteams_backends:
+  - 'http://127.0.0.1:8080'
+carbonapi_listen: '127.0.0.1:8082'
+carbonapi_upstreams_carbonsearch: false
+carbonapi_upstreams_carbonsearch_backend: http://127.0.0.1:8070
+carbonapi_upstreams_carbonsearch_prefix: virt.v1.*
+carbonapi_concurrency: 20
+carbonapi_cpus: 0
+carbonapi_sendglobsasis: false
+carbonapi_cache_type: mem
+carbonapi_cache_size_mb: 0
+carbonapi_cache_defaulttimeoutsec: 60
+carbonapi_cache_memcachedservers:
+  - "127.0.0.1:1234"
+  - "127.0.0.2:1235"

@@ -1,0 +1,125 @@
+#jinja2: lstrip_blocks: True
+# TBD: sync with upstream: https://github.com/go-graphite/carbonapi/blob/master/cmd/carbonapi/carbonapi.example.yaml
+# Need to be URL, http or https
+# This url specifies the backend or a loadbalancer
+#
+# Is you are using carbonzipper you should set it to
+# zipper's url
+#
+# If you are using plain go-carbon or graphite-clickhouse
+# you should set it to URL of go-carbon's carbonserver module
+# or graphite-clickhouse's http url.
+# Listen address, should always include hostname or ip address and a port.
+listen: "{{ carbonapi_listen }}"
+# Max concurrent requests to CarbonZipper
+concurency: {{ carbonapi_concurrency }}
+cache:
+  # Type of caching. Valid: "mem", "memcache", "null"
+  type: "mem"
+  # Cache limit in megabytes
+  size_mb: {{ carbonapi_cache_size_mb }}
+  # Default cache timeout value. Identical to DEFAULT_CACHE_DURATION in graphite-web.
+  defaultTimeoutSec: {{ carbonapi_cache_defaulttimeoutsec }}
+  {% if carbonapi_cache_type == "memcached" %}
+    {% if carbonapi_cache_memcachedservers is defined %}
+  # Only used by memcache type of cache. List of memcache servers.
+  memcachedServers:
+      {% for item in carbonapi_cache_memcachedservers %}
+    - "{{ item }}"
+      {% endfor %}
+    {% endif %}
+  {% endif %}
+# Amount of CPUs to use. 0 - unlimited
+cpus: {{ carbonapi_cpus }}
+# Timezone, default - local
+tz: "{{ carbonapi_tz | default('')}}"
+# If 'true', carbonapi will send requests as is, with globs and braces
+# Otherwise for each request it will generate /metrics/find and then /render
+# individual metrics.
+# true --- faster, but will cause carbonzipper to consume much more RAM.
+#
+# For some backends (e.x. graphite-clickhouse) this *MUST* be set to true in order
+# to get reasonable performance
+#
+# For go-carbon --- it depends on how you use it.
+sendGlobsAsIs: {{ carbonapi_sendglobsasis | lower }}
+# If sendGlobsAsIs is set and resulting response will be larger than maxBatchSize
+# carbonapi will revert to old behavir. This allows you to use benifits of passing
+# globs as is but keep memory usage in sane limits.
+#
+# For go-carbon you might want it to keep in some reasonable limits, 100 is good "safe" defaults
+#
+# For some backends (e.x. graphite-clickhouse) you might want to set it to some insanly high value, like 100000
+maxBatchSize: 100
+graphite:
+  # Host:port where to send internal metrics
+  # Empty = disabled
+  host: ""
+  interval: "60s"
+  prefix: "carbon.api"
+# Maximium idle connections to carbonzipper
+idleConnections: 10
+pidFile: ""
+# See https://github.com/go-graphite/carbonzipper/blob/master/example.conf#L70-L108 for format explanation
+upstreams:
+  # Number of 100ms buckets to track request distribution in. Used to build
+  # 'carbon.zipper.hostname.requests_in_0ms_to_100ms' metric and friends.
+  # Requests beyond the last bucket are logged as slow
+  # (default of 10 implies "slow" is >1 second).
+  buckets: 10
+
+  timeouts:
+    # Maximum total backend requesting timeout in ms.
+    # ( How long we may spend making requests. )
+    global: "10s"
+    # Timeout, in ms, once the final backend has been contacted.
+    # ( [Effectively] How long we'll wait for the slowest response. )
+    afterStarted: "2s"
+    # Timeout to connect to the server
+    connect: "200ms"
+
+  # Number of concurrent requests to any given backend - default is no limit.
+  # If set, you likely want >= MaxIdleConnsPerHost
+  concurrencyLimit: 0
+
+  # Configures how often keep alive packets will be sent out
+  keepAliveInterval: "30s"
+
+  # Control http.MaxIdleConnsPerHost. Large values can lead to more idle
+  # connections on the backend servers which may bump into limits; tune with care.
+  maxIdleConnsPerHost: 100
+
+  # "http://host:port" array of instances of carbonserver stores
+  # This is the *ONLY* config element in this section that MUST be specified.
+  backends:
+    {% if carbonapi_upsteams_backends is defined %}
+      {% for item in carbonapi_upsteams_backends %}
+    - "{{ item }}"
+      {% endfor %}
+    {% endif %}
+  {% if carbonapi_upstreams_carbonsearch == true %}
+  carbonsearch:
+      # Instance of carbonsearch backend
+      backend: "{{ carbonapi_upstreams_carbonsearch_backend }}"
+      # carbonsearch prefix to reserve/register
+      prefix: "{{ carbonapi_upstreams_carbonsearch_prefix }}"
+  {% endif %}
+  # Enable compatibility with graphite-web 0.9
+  # This will affect graphite-web 1.0+ with multiple cluster_servers
+  # Default: disabled
+  graphite09compat: false
+# If not zero, enabled cache for find requests
+# This parameter controls when it will expire (in seconds)
+# Default: 600 (10 minutes)
+expireDelaySec: 10
+logger:
+    - logger: ""
+      file: "stderr"
+      level: "debug"
+      encoding: "console"
+      encodingTime: "iso8601"
+      encodingDuration: "seconds"
+    - logger: ""
+      file: "carbonapi.log"
+      level: "info"
+      encoding: "json"
